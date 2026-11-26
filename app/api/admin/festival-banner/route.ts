@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+const schema = z.object({ title: z.string().trim().min(2).max(120), subtitle: z.string().trim().max(160).nullable().optional(), description: z.string().trim().max(1000).nullable().optional(), imageUrl: z.string().url().nullable().optional(), ctaLabel: z.string().trim().max(80).nullable().optional(), ctaHref: z.string().trim().startsWith("/").max(200).nullable().optional(), isActive: z.boolean() });
+export async function GET() { try { await requireAdmin(); return NextResponse.json(await prisma.festivalBanner.findFirst({ orderBy: { updatedAt: "desc" } })); } catch { return NextResponse.json({ error: "Unauthorized." }, { status: 401 }); } }
+export async function PUT(request: Request) { try { await requireAdmin(); const parsed = schema.safeParse(await request.json()); if (!parsed.success) return NextResponse.json({ error: "Invalid festival promotion." }, { status: 400 }); const existing = await prisma.festivalBanner.findFirst({ orderBy: { updatedAt: "desc" } }); const banner = existing ? await prisma.festivalBanner.update({ where: { id: existing.id }, data: parsed.data }) : await prisma.festivalBanner.create({ data: parsed.data }); return NextResponse.json(banner); } catch { return NextResponse.json({ error: "Unable to save festival promotion." }, { status: 500 }); } }
